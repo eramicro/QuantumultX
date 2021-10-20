@@ -1,5 +1,5 @@
 /** 
-☑️ 资源解析器 ©𝐒𝐡𝐚𝐰𝐧  ⟦2021-10-06 10:05⟧
+☑️ 资源解析器 ©𝐒𝐡𝐚𝐰𝐧  ⟦2021-10-19 17:05⟧
 ----------------------------------------------------------
 🤖 主要功能: 
 ❶ 将其它格式的⟦服务器订阅⟧解析成 𝐐𝐮𝐚𝐧𝐭𝐮𝐦𝐮𝐥𝐭 𝐗 格式
@@ -72,7 +72,7 @@
   ❖ ⚠️ 把 𝗿𝘂𝗹𝗲-𝘀𝗲𝘁 中 𝐮𝐫𝐥-𝐫𝐞𝐠𝐞𝐱 转成重写时, 必须要加 dst=rewrite;
   ❖ ⚠️ 把 𝐦𝐨𝐝𝐮𝐥𝐞 中的分流规则转换时, 必须要加 dst=filter
 ⦿ cdn=1, 将 github 脚本的地址转换成免翻墙cdn.jsdelivr.net
-⦿ fcr=1, 为分流规则添加 force-cellular参数，强制移动数据
+⦿ fcr=1/2, 为分流规则添加 force-cellular/multi-interface 参数，强制移动数据/混合数据
 
 3⃣️ 其他参数
 ⦿ 通知参数 ntf=0/1, 用于 关闭/打开 资源解析器的提示通知
@@ -983,16 +983,18 @@ function Rule_Handle(subs, Pout, Pin) {
         //return cnt.map(Rule_Policy)
     }
   nlist = Pfcr == 1? nlist.filter(Boolean).map(item => item+", force-cellular") : nlist.filter(Boolean)
+  nlist = Pfcr == 2? nlist.filter(Boolean).map(item => item+", multi-interface") : nlist.filter(Boolean)
+
   return nlist
 }
 
 function Rule_Policy(content) { //增加、替换 policy
     var cnt = content.replace(/^\s*\-\s/g,"").replace(/REJECT-TINYGIF/gi,"reject").trim().split("//")[0].split(",");
-    var RuleK = ["//", "#", ";"];
+    var RuleK = ["//", "#", ";","[","/"];
     var RuleK1 = ["host", "domain", "ip-cidr", "geoip", "user-agent", "ip6-cidr"];
     const RuleCheck = (item) => cnt[0].trim().toLowerCase().indexOf(item) == 0; //无视注释行
-    const RuleCheck1 = (item) => cnt[0].trim().toLowerCase().indexOf(item) != -1; //无视 quanx 不支持的规则类别
-    if (RuleK1.some(RuleCheck1)) {
+    const RuleCheck1 = (item) => cnt[0].trim().toLowerCase().indexOf(item) == 0; //无视 quanx 不支持的规则类别
+    if (RuleK1.some(RuleCheck1) && !RuleK.some(RuleCheck)) {
         if (cnt.length == 3 && cnt.indexOf("no-resolve") == -1) {
             ply0 = Ppolicy != "Shawn" ? Ppolicy : cnt[2]
             nn = cnt[0] + ", " + cnt[1] + ", " + ply0
@@ -1001,10 +1003,10 @@ function Rule_Policy(content) { //增加、替换 policy
             nn = cnt[0] + ", " + cnt[1] + ", " + ply0
         } else if (cnt.length == 3 && cnt[2].indexOf("no-resolve") != -1) {
             ply0 = Ppolicy != "Shawn" ? Ppolicy : "Shawn"
-            nn = cnt[0] + ", " + cnt[1] + ", " + ply0 + ", " + cnt[2]
+            nn = cnt[0] + ", " + cnt[1] + ", " + ply0 //+ ", " + cnt[2]
         } else if (cnt.length == 4 && cnt[3].indexOf("no-resolve") != -1) {
             ply0 = Ppolicy != "Shawn" ? Ppolicy : cnt[2]
-            nn = cnt[0] + ", " + cnt[1] + ", " + ply0 + ", " + cnt[3]
+            nn = cnt[0] + ", " + cnt[1] + ", " + ply0 //+ ", " + cnt[3]
         } else if (!RuleK.some(RuleCheck) && content) {
             //$notify("未能解析" + "⟦" + subtag + "⟧" + "其中部分规则:", content, nan_link);
             return ""
@@ -1013,7 +1015,25 @@ function Rule_Policy(content) { //增加、替换 policy
             nn = ""
         } else { nn = nn.replace("IP-CIDR6", "ip6-cidr") }
         return nn
+    } else if (cnt.length == 1 && !RuleK.some(RuleCheck)) { // 纯域名/ip 列表
+      return rule_list_handle(cnt[0])
     } else { return "" }//if RuleK1 check	
+}
+
+// 处理纯列表
+function rule_list_handle(cnt) {
+  if(cnt.trim().indexOf(" ")==-1){
+    if(cnt.indexOf("::")!=-1 && cnt.indexOf("/")!=-1) { // ip-v6?
+      cnt = "ip6-cidr, " + cnt
+      cnt = Ppolicy == "Shawn" ? cnt+", Shawn" : cnt+", "+Ppolicy
+    } else if (cnt.split("/").length == 2) {//ip-cid
+      cnt = "ip-cidr, " + cnt
+      cnt = Ppolicy == "Shawn" ? cnt+", Shawn" : cnt+", "+Ppolicy
+    } else if (cnt) { //host - suffix
+      cnt = "host-suffix, " + cnt
+      cnt = Ppolicy == "Shawn" ? cnt+", Shawn" : cnt+", "+Ppolicy
+    }
+    return cnt}
 }
 
 // Domain-Set
@@ -1830,7 +1850,7 @@ function get_emoji(emojip, sname) {
     "🇮🇩": ["ID", "Indonesia", "印尼", "印度尼西亚", "雅加达"],
     "🇮🇪": ["Ireland", "IRELAND", "爱尔兰", "愛爾蘭", "都柏林"],
     "🇮🇱": ["Israel", "以色列"],
-    "🇮🇳": ["India", "IND", "INDIA","印度", "孟买", "Mumbai"],
+    "🇮🇳": ["India", "IND", "INDIA","印度", "孟买", "Mumbai","IN "],
     "🇮🇸": ["IS","ISL", "冰岛","冰島"],
     "🇰🇵": ["KP", "朝鲜"],
     "🇰🇷": ["KR", "Korea", "KOR", "韩国", "首尔", "韩", "韓","春川"],
@@ -1853,7 +1873,7 @@ function get_emoji(emojip, sname) {
     "🇻🇳": ["VN", "越南", "胡志明市"],
     "🇮🇹": ["Italy", "IT", "Nachash", "意大利", "米兰", "義大利"],
     "🇿🇦": ["South Africa", "南非"],
-    "🇦🇪": ["United Arab Emirates", "阿联酋"],
+    "🇦🇪": ["United Arab Emirates", "阿联酋","AE "],
     "🇧🇷": ["BR", "Brazil", "巴西", "圣保罗"],
     "🇯🇵": ["JP", "Japan","JAPAN", "日本", "东京", "大阪", "埼玉", "沪日", "穗日", "川日", "中日", "泉日", "杭日", "深日", "辽日", "广日"],
     "🇦🇷": ["AR", "阿根廷"],
