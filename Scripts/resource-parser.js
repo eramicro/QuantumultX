@@ -1,5 +1,5 @@
 /** 
-☑️ 资源解析器 ©𝐒𝐡𝐚𝐰𝐧  ⟦2021-10-19 17:05⟧
+☑️ 资源解析器 ©𝐒𝐡𝐚𝐰𝐧  ⟦2021-10-22 21:35⟧
 ----------------------------------------------------------
 🤖 主要功能: 
 ❶ 将其它格式的⟦服务器订阅⟧解析成 𝐐𝐮𝐚𝐧𝐭𝐮𝐦𝐮𝐥𝐭 𝐗 格式
@@ -167,6 +167,8 @@ let [flow, exptime, errornode, total] = "";
 var Pdel = mark0 && para1.indexOf("del=") != -1 ? para1.split("del=")[1].split("&")[0] : 0; //删除重复节点
 var typeU = para1.indexOf("type=") != -1 ? para1.split("type=")[1].split("&")[0] : "";
 var Pfcr = para1.indexOf("fcr=") != -1 ? para1.split("fcr=")[1].split("&")[0] : ""; // force-cellular 参数
+
+var typeQ = $resource.type   //返回 field 类型参数
 
 //花漾字 pattern
 var pat=[]
@@ -922,9 +924,9 @@ function Rule_Handle(subs, Pout, Pin) {
         for (var i = 0; i < cnt.length; i++) {
             cc = cnt[i].replace(/^\s*\-\s/g,"").trim()
             const exclude = (item) => cc.indexOf(item) != -1; // 删除项
-            const RuleCheck = (item) => cc.indexOf(item) != -1; //无视注释行
-            if (Tout.some(exclude) && !RuleK.some(RuleCheck)) {
-                dlist.push(Rule_Policy("-" + cc))
+            const RuleCheck = (item) => cc.toLowerCase().indexOf(item) != -1; //无视注释行
+            if (Tout.some(exclude) && !RuleK.some(RuleCheck) && RuleK2.some(RuleCheck)) {
+                dlist.push("-" + Rule_Policy(cc))
             } else if (!RuleK.some(RuleCheck) && cc) { //if Pout.some, 不操作注释项
                 dd = Rule_Policy(cc);
                 if (Tin != "" && Tin != null) {
@@ -990,11 +992,11 @@ function Rule_Handle(subs, Pout, Pin) {
 
 function Rule_Policy(content) { //增加、替换 policy
     var cnt = content.replace(/^\s*\-\s/g,"").replace(/REJECT-TINYGIF/gi,"reject").trim().split("//")[0].split(",");
-    var RuleK = ["//", "#", ";","[","/"];
+    var RuleK = ["//", "#", ";","[","/", "hostname"];
     var RuleK1 = ["host", "domain", "ip-cidr", "geoip", "user-agent", "ip6-cidr"];
     const RuleCheck = (item) => cnt[0].trim().toLowerCase().indexOf(item) == 0; //无视注释行
-    const RuleCheck1 = (item) => cnt[0].trim().toLowerCase().indexOf(item) == 0; //无视 quanx 不支持的规则类别
-    if (RuleK1.some(RuleCheck1) && !RuleK.some(RuleCheck)) {
+    const RuleCheck1 = (item) => cnt[0].trim().toLowerCase().indexOf(item) == 0 ; //无视 quanx 不支持的规则类别&排除 hostname
+    if (RuleK1.some(RuleCheck1) && !RuleK.some(RuleCheck) ) {
         if (cnt.length == 3 && cnt.indexOf("no-resolve") == -1) {
             ply0 = Ppolicy != "Shawn" ? Ppolicy : cnt[2]
             nn = cnt[0] + ", " + cnt[1] + ", " + ply0
@@ -1015,7 +1017,7 @@ function Rule_Policy(content) { //增加、替换 policy
             nn = ""
         } else { nn = nn.replace("IP-CIDR6", "ip6-cidr") }
         return nn
-    } else if (cnt.length == 1 && !RuleK.some(RuleCheck)) { // 纯域名/ip 列表
+    } else if  (cnt.length == 1 && !RuleK.some(RuleCheck) && cnt[0]!="" && cnt[0].indexOf("payload:")==-1) { // 纯域名/ip 列表
       return rule_list_handle(cnt[0])
     } else { return "" }//if RuleK1 check	
 }
@@ -1508,30 +1510,30 @@ function SSR2QX(subs, Pudp, Ptfo) {
 
 //Trojan 类型 URI 转换成 QX
 function TJ2QX(subs, Pudp, Ptfo, Pcert0, PTls13) {
-    var ntrojan = []
-    var cnt = subs.split("trojan://")[1]
-    type = "trojan=";
-    if (cnt.indexOf(":443") != -1) {
-        ip = cnt.split("@")[1].split(":443")[0] + ":443";
-    } else {
-        ip = cnt.split("@")[1].split("?")[0].split("\n")[0].trim(); //非 443 端口的奇葩机场？
-    }
-    pwd = "password=" + cnt.split("@")[0];
-    obfs = "over-tls=true";
-    pcert = cnt.indexOf("allowInsecure=0") != -1 ? "tls-verification=true" : "tls-verification=false";
-    thost = cnt.indexOf("sni=") != -1? "tls-host="+cnt.split("sni=")[1].split(/&|#/)[0]:""
-    ptls13 = PTls13 == 1 ? "tls13=true" : "tls13=false"
-    if (Pcert0 == 0) { 
-      pcert = "tls-verification=false" 
-    } else if (Pcert0 == 1) {
-      pcert = "tls-verification=true"
-    }
-    pudp = Pudp == 1 ? "udp-relay=false" : "udp-relay=false";
-    ptfo = Ptfo == 1 ? "fast-open=true" : "fast-open=false";
-    tag = cnt.indexOf("#") != -1 ? "tag=" + decodeURIComponent(cnt.split("#")[1]) : "tag= [trojan]" + ip
-    ntrojan.push(type + ip, pwd, obfs, pcert, thost, ptls13, pudp, ptfo, tag)
-    QX = ntrojan.filter(Boolean).join(", ");
-    return QX;
+  var ntrojan = []
+  var cnt = subs.split("trojan://")[1]
+  type = "trojan=";
+  if (cnt.indexOf(":443") != -1) {
+    ip = cnt.split("@")[1].split(":443")[0] + ":443";
+  } else {
+    ip = cnt.split("@")[1].split("?")[0].split("\n")[0].split("#")[0].trim(); //非 443 端口的奇葩机场？
+  }
+  pwd = cnt.split("@")[0]? "password=" + decodeURIComponent(cnt.split("@")[0]):"";
+  obfs = "over-tls=true";
+  pcert = cnt.indexOf("allowInsecure=0") != -1 ? "tls-verification=true" : "tls-verification=false";
+  thost = cnt.indexOf("sni=") != -1? "tls-host="+cnt.split("sni=")[1].split(/&|#/)[0]:""
+  ptls13 = PTls13 == 1 ? "tls13=true" : "tls13=false"
+  if (Pcert0 == 0) { 
+    pcert = "tls-verification=false" 
+  } else if (Pcert0 == 1) {
+    pcert = "tls-verification=true"
+  }
+  pudp = Pudp == 1 ? "udp-relay=false" : "udp-relay=false";
+  ptfo = Ptfo == 1 ? "fast-open=true" : "fast-open=false";
+  tag = cnt.indexOf("#") != -1 ? "tag=" + decodeURIComponent(cnt.split("#")[1]) : "tag= [trojan]" + ip
+  ntrojan.push(type + ip, pwd, obfs, pcert, thost, ptls13, pudp, ptfo, tag)
+  QX = ntrojan.filter(Boolean).join(", ");
+  return QX;
 }
 
 //SS 类型 URI 转换 quanx 格式
